@@ -21,7 +21,7 @@ RNG rng(12345);
 
 /** @function main */
 int main( int argc, const char** argv ){
-    CvCapture* capture;
+    //CvCapture* capture;
 
     //-- 1. Load the cascades
     if( !face_cascade.load( face_cascade_name ) ){ printf("--(!)Error loading face cascades\n"); return -1; };
