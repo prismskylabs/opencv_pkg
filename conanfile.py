@@ -45,29 +45,29 @@ class OpenCVConan(ConanFile):
                        "fPIC": True,
                        "contrib": False,
                        "jpeg": True,
-                       "jpegturbo": False,
-                       "tiff": True,
-                       "webp": True,
+                       "jpegturbo": True,
+                       "tiff": False,
+                       "webp": False,
                        "png": True,
-                       "jpeg2000": "openjpeg",
-                       "openexr": True,
+                       "jpeg2000": None, #"openjpeg",
+                       "openexr": False,
                        "gtk": None,
                        "nonfree": False,
-                       "dc1394": True,
+                       "dc1394": False,
                        "carotene": False,
                        "cuda": False,
                        "protobuf": True,
-                       "freetype": True,
-                       "harfbuzz": True,
-                       "eigen": True,
-                       'glog': True,
-                       "gflags": True,
+                       "freetype": False,
+                       "harfbuzz": False,
+                       "eigen": False,
+                       'glog': False,
+                       "gflags": False,
                        "gstreamer": False,
                        "openblas": False,
-                       "ffmpeg": False,
+                       "ffmpeg": True,
                        "lapack": False,
                        "parallel": None,
-                       "quirc": True}
+                       "quirc": False}
     exports_sources = ["CMakeLists.txt", "patches/*.patch"]
     exports = "LICENSE"
     generators = "cmake"
@@ -90,6 +90,10 @@ class OpenCVConan(ConanFile):
             del self.options.harfbuzz
             del self.options.glog
             del self.options.gflags
+
+        if "arm" in self.settings.arch:
+            self.options.ffmpeg = False
+            self.options.protobuf = False
 
     def source(self):
         sha256 = "68bc40cbf47fdb8ee73dfaf0d9c6494cd095cf6294d99de445ab64cf853d278a"
@@ -140,7 +144,7 @@ class OpenCVConan(ConanFile):
             # NOTE : use the same libjpeg implementation as jasper uses
             # otherwise, jpeg_create_decompress will fail on version check
             if self.options.jpegturbo:
-                self.requires.add('libjpeg-turbo/2.0.4')
+                self.requires.add('libjpeg-turbo/2.0.5')
             else:
                 self.requires.add('libjpeg/9d')
         if self.options.tiff:
@@ -160,7 +164,7 @@ class OpenCVConan(ConanFile):
         if self.options.protobuf:
             # NOTE : version should be the same as used in OpenCV release,
             # otherwise, PROTOBUF_UPDATE_FILES should be set to re-generate files
-            self.requires.add('protobuf/3.5.2@bincrafters/stable')
+            self.requires.add('protobuf/3.11.4')
         if self.options.eigen:
             self.requires.add('eigen/3.3.7')
         if self.options.gstreamer:
@@ -169,7 +173,7 @@ class OpenCVConan(ConanFile):
         if self.options.openblas:
             self.requires.add('openblas/0.3.7')
         if self.options.ffmpeg:
-            self.requires.add('ffmpeg/4.2.1@bincrafters/stable')
+            self.requires.add('ffmpeg/4.2.1')
         if self.options.lapack:
             self.requires.add('lapack/3.7.1@conan/stable')
         if self.options.contrib:
@@ -242,7 +246,7 @@ class OpenCVConan(ConanFile):
             cmake.definitions['ENABLE_PIC'] = self.options.fPIC
 
         # Disable modules and options that are not compatible with Emscripten
-        if self.settings.os == 'Emscripten':
+        if self.settings.os == 'Emscripten' or 'PKG_PLATFORM' in os.environ: # adding to our overrides too
             cmake.definitions['BUILD_opencv_videoio'] = False
             cmake.definitions['WITH_OPENCL'] = False
             cmake.definitions['WITH_OPENCLAMDBLAS'] = False
@@ -254,6 +258,19 @@ class OpenCVConan(ConanFile):
             cmake.definitions['WITH_IMGCODEC_PFM'] = False
             cmake.definitions['WITH_IMGCODEC_PXM'] = False
             cmake.definitions['WITH_IMGCODEC_SUNRASTER'] = False
+
+        # Our custom overrides
+        if 'PKG_PLATFORM' in os.environ:
+            #cmake.definitions['BUILD_opencv_highgui'] = False
+            cmake.definitions['BUILD_opencv_videoio'] = False
+            cmake.definitions['BUILD_opencv_stitching'] = False
+            cmake.definitions['BUILD_opencv_photo'] = False
+            cmake.definitions['BUILD_opencv_video'] = False
+            #cmake.definitions['BUILD_opencv_imgcodecs'] = False
+            cmake.definitions['BUILD_opencv_gapi'] = False
+
+
+
 
         # We are building C++ only. Disable other languages
         cmake.definitions['BUILD_JAVA'] = False
@@ -304,6 +321,10 @@ class OpenCVConan(ConanFile):
             cmake.definitions['FFMPEG_LIBRARIES'] = ';'.join(self._gather_libs('ffmpeg'))
             cmake.definitions['FFMPEG_INCLUDE_DIRS'] = ';'.join(self._gather_include_paths('ffmpeg'))
 
+        # ZLIB
+        cmake.definitions["ZLIB_LIBRARY"] =  self.deps_cpp_info["zlib"].libs[0]
+        cmake.definitions["ZLIB_INCLUDE_DIR"] = self.deps_cpp_info["zlib"].include_paths[0]
+        
         # GStreamer
         cmake.definitions['WITH_GSTREAMER'] = self.options.gstreamer
         if self.options.gstreamer:
@@ -322,11 +343,15 @@ class OpenCVConan(ConanFile):
         cmake.definitions['WITH_ITT'] = False
 
         # jasper
+        cmake.definitions['BUILD_JASPER'] = False
+        cmake.definitions['WITH_JASPER'] = False
         if self.options.jpeg2000 == "jasper":
             cmake.definitions['BUILD_JASPER'] = False
             cmake.definitions['WITH_JASPER'] = True
 
         # openjpeg
+        cmake.definitions['BUILD_OPENJPEG'] = False
+        cmake.definitions['WITH_OPENJPEG'] = False
         if self.options.jpeg2000 == "openjpeg":
             cmake.definitions['OpenJPEG_FOUND'] = True
             cmake.definitions['BUILD_OPENJPEG'] = False
@@ -339,8 +364,10 @@ class OpenCVConan(ConanFile):
 
         # JPEG
         cmake.definitions['BUILD_JPEG'] = False
-        cmake.definitions['WITH_JPEG'] = self.options.jpeg
-
+        cmake.definitions['WITH_JPEG'] = self.options.jpeg or self.options.jpegturbo
+        cmake.definitions['JPEG_LIBRARY'] = self._gather_libs('libjpeg-turbo')
+        cmake.definitions['JPEG_INCLUDE_DIR'] = self._gather_include_paths('libjpeg-turbo')
+        
         # LAPACK
         cmake.definitions['WITH_LAPACK'] = self.options.lapack
         if self.options.lapack:
@@ -363,10 +390,14 @@ class OpenCVConan(ConanFile):
         # PNG
         cmake.definitions['BUILD_PNG'] = False
         cmake.definitions['WITH_PNG'] = self.options.png
+        if self.options.png:
+            cmake.definitions['PNG_LIBRARY'] = self._gather_libs('libpng')
+            cmake.definitions['PNG_INCLUDE_DIR'] = self._gather_include_paths('libpng')
+            cmake.definitions['PNG_PNG_INCLUDE_DIR'] = self._gather_include_paths('libpng')
 
         # Protobuf
         cmake.definitions['BUILD_PROTOBUF'] = False
-        cmake.definitions['PROTOBUF_UPDATE_FILES'] = False
+        cmake.definitions['PROTOBUF_UPDATE_FILES'] = True
         cmake.definitions['WITH_PROTOBUF'] = self.options.protobuf
         if self.options.protobuf and self.settings.compiler == 'Visual Studio' and self.options.shared:
             # this relies on CMake's bundled FindProtobuf.cmake
@@ -471,10 +502,12 @@ class OpenCVConan(ConanFile):
         cmake = self._configure_cmake()
         cmake.build()
 
+
     def package(self):
         self.copy("LICENSE", dst="licenses", src=self._source_subfolder)
         cmake = self._configure_cmake()
         cmake.install()
+        os.system('find $HOME/.conan/data/opencv -name "*.cmake" -print | xargs -n 1 chmod 644')
         cmake.patch_config_paths()
 
     def add_libraries_from_pc(self, library):
@@ -506,10 +539,22 @@ class OpenCVConan(ConanFile):
         if not self.options.protobuf:
             opencv_libs.remove("dnn")
 
+        # Our custom libs cleaning
+        # It shall be in sync with configure() method
+        if "PKG_PLATFORM" in os.environ:
+            #opencv_libs.remove("imgcodecs")
+            #opencv_libs.remove("highgui")
+            opencv_libs.remove("photo")
+            opencv_libs.remove("video")
+            opencv_libs.remove("videoio")
+            opencv_libs.remove("stitching")
+
+
+
         if self.settings.os == 'Emscripten':
             opencv_libs.remove("videoio")
 
-        if self.settings.os != 'Android':
+        if self.settings.os != 'Android' and  not "PKG_PLATFORM" in os.environ:
             # gapi depends on ade but ade disabled for Android
             # https://github.com/opencv/opencv/blob/4.0.1/modules/gapi/cmake/DownloadADE.cmake#L2
             opencv_libs.append("gapi")
