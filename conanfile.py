@@ -661,3 +661,8 @@ class OpenCVConan(ConanFile):
                     self.cpp_info.libs.append('quirc%s' % suffix)
         if self.options.contrib and self.options.eigen and self.options.glog and self.options.gflags:
             self.cpp_info.libs.append('multiview')
+
+    def conan_info(self): # https://github.com/conan-io/conan/issues/212
+        if self.settings.compiler == "gcc" or self.settings.compiler == "clang":  # or3 self.settings.os != "Windows" or the like
+            self.info.settings.build_type = None # Make gcc to be all Release packages linkable to Debug too
+
