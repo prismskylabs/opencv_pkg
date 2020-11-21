@@ -662,4 +662,5 @@ class OpenCVConan(ConanFile):
         if self.options.contrib and self.options.eigen and self.options.glog and self.options.gflags:
             self.cpp_info.libs.append('multiview')
 
-
+        self.cpp_info.names["cmake_find_package"] = "OpenCV"
+        self.cpp_info.names["cmake_find_package_multi"] = "OpenCV"
