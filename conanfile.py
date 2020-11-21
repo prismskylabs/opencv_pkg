@@ -661,3 +661,5 @@ class OpenCVConan(ConanFile):
                     self.cpp_info.libs.append('quirc%s' % suffix)
         if self.options.contrib and self.options.eigen and self.options.glog and self.options.gflags:
             self.cpp_info.libs.append('multiview')
+
+
