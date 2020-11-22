@@ -265,7 +265,7 @@ class OpenCVConan(ConanFile):
             cmake.definitions['BUILD_opencv_videoio'] = False
             cmake.definitions['BUILD_opencv_stitching'] = False
             cmake.definitions['BUILD_opencv_photo'] = False
-            cmake.definitions['BUILD_opencv_video'] = False
+            #cmake.definitions['BUILD_opencv_video'] = False
             #cmake.definitions['BUILD_opencv_imgcodecs'] = False
             cmake.definitions['BUILD_opencv_gapi'] = False
 
