@@ -545,7 +545,7 @@ class OpenCVConan(ConanFile):
             #opencv_libs.remove("imgcodecs")
             #opencv_libs.remove("highgui")
             opencv_libs.remove("photo")
-            opencv_libs.remove("video")
+            #opencv_libs.remove("video")
             opencv_libs.remove("videoio")
             opencv_libs.remove("stitching")
 
